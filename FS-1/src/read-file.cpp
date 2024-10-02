@@ -1,6 +1,7 @@
 #include <iostream>
-#include <fstream>
-#include <string>
+#include <fcntl.h>
+#include <unistd.h>
+#include <cstring>
 
 int main(int argc, char* argv[]) {
     if (argc != 2) {
@@ -8,17 +9,30 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    std::ifstream file(argv[1]);
-    if (!file.is_open()) {
-        std::cerr << "cannot open a file " << argv[1] << ".\n";
-        return 1;
+    int fd = open(argv[1], O_RDONLY);
+    if(fd == -1) {
+       std::cerr << "cannot open the file: " << strerror(errno) << "\n";
+       return 1;
     }
 
-    std::string line;
-    while (std::getline(file, line)) {
-        std::cout << line << '\n';
+    
+    char buffer[1024];
+    ssize_t bytesRead;
+    while((bytesRead = read(fd, buffer, sizeof(buffer))) > 0) {
+        if(write(STDOUT_FILENO, buffer, bytesRead) == -1) {
+           std::cerr << "error\n";
+           close(fd);
+           return 1;
+        }
     }
 
-    file.close();
-    return 0;
+
+ if(bytesRead == -1) {
+   std::cerr << "cannot read file: " << strerror(errno) << "\n";
+   close(fd);
+   return 1;
+  }
+
+close(fd);
+return 0;
 }
